@@ -18,7 +18,7 @@ export const Content = styled.div`
 
   width: 100%;
   max-width: 600px;
-  `;
+`;
 
 const appearFromLeft = keyframes`
   from{
@@ -31,9 +31,7 @@ const appearFromLeft = keyframes`
   }
 `;
 
-
 export const AnimationContainer = styled.div`
-
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -80,13 +78,10 @@ export const AnimationContainer = styled.div`
       color: ${shade(0.2, '#ff9000')};
     }
   }
-
 `;
-
 
 export const Background = styled.div`
   flex: 1;
   background: url(${SignInBackground}) no-repeat center;
   background-size: cover;
 `;
-

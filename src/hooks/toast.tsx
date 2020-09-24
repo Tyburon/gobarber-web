@@ -31,7 +31,7 @@ const ToastProvider: React.FC = ({ children }) => {
       };
       setMessages(state => [...state, toast]);
     },
-    [messages],
+    [],
   );
 
   const removeToast = useCallback((id: string) => {
