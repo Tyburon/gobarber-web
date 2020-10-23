@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState } from 'react';
-import { FiLogIn, FiMail} from 'react-icons/fi';
+import { FiLogIn, FiMail } from 'react-icons/fi';
 import * as Yup from 'yup';
 import { FormHandles } from '@unform/core';
 import { Form } from '@unform/web';
@@ -45,7 +45,7 @@ const ForgotPassword: React.FC = () => {
           abortEarly: false,
         });
 
-        //recuperação de senha
+        // recuperação de senha
         await api.post('/password/forgot', {
           email: data.email,
         });
@@ -53,7 +53,8 @@ const ForgotPassword: React.FC = () => {
         addToast({
           type: 'success',
           title: 'E-mail de recuperação de senha Enviado',
-          description: 'Enviamos um email de recuperação de senha, cheque sua caixa de entrada.',
+          description:
+            'Enviamos um email de recuperação de senha, cheque sua caixa de entrada.',
         });
         // history.push('/dashboard');
       } catch (err) {
@@ -66,9 +67,10 @@ const ForgotPassword: React.FC = () => {
         addToast({
           type: 'error',
           title: 'Erro na recuperação de senha',
-          description: 'Ocorreu um erro ao tentar fazer a recuperação da senha.',
+          description:
+            'Ocorreu um erro ao tentar fazer a recuperação da senha.',
         });
-      }finally{
+      } finally {
         setLoading(false);
       }
     },
@@ -85,12 +87,13 @@ const ForgotPassword: React.FC = () => {
 
             <Input name="email" icon={FiMail} placeholder="E-mail" />
 
-            <Button loading={} type="submit">Enviar</Button>
-
+            <Button loading={loading} type="submit">
+              Enviar
+            </Button>
           </Form>
           <Link to="/signin">
             <FiLogIn />
-            Voltar ao Login 
+            Voltar ao Login
           </Link>
         </AnimationContainer>
       </Content>

@@ -36,27 +36,28 @@ const ResetPassword: React.FC = () => {
 
         const schema = Yup.object().shape({
           password: Yup.string().required('Senha obrigatória'),
-          password_confirmation: Yup.string()
-           .oneOf([Yup.ref('password'), null], 'Senhas com valores diferentes')
+          password_confirmation: Yup.string().oneOf(
+            [Yup.ref('password'), undefined],
+            'Senhas com valores diferentes',
+          ),
         });
 
         await schema.validate(data, {
           abortEarly: false,
         });
 
-
-        const {password, password_confirmation} = data;
+        const { password, password_confirmation } = data;
         const token = location.search.replace('?token=', '');
 
-        if(!token){
-          throw new Error();          
+        if (!token) {
+          throw new Error();
         }
 
         await api.post('/password/reset', {
           password,
           password_confirmation,
           token,
-        })
+        });
 
         history.push('/');
       } catch (err) {
@@ -84,7 +85,6 @@ const ResetPassword: React.FC = () => {
           <Form ref={formRef} onSubmit={handleSubmit}>
             <h1>Resetar senha</h1>
 
-
             <Input
               name="password"
               icon={FiLock}
@@ -100,7 +100,6 @@ const ResetPassword: React.FC = () => {
             />
 
             <Button type="submit">Alterar senha</Button>
-
           </Form>
         </AnimationContainer>
       </Content>
