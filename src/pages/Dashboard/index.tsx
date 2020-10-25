@@ -1,169 +1,267 @@
-/* eslint-disable prettier/prettier */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isToday, format, parseISO, isAfter } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 import DayPicker, { DayModifiers } from 'react-day-picker';
 import 'react-day-picker/lib/style.css';
 
 import { FiPower, FiClock } from 'react-icons/fi';
-import {Container, Header, HeaderContent, Profile, Content, Schedule, Calendar, NextAppointment, Section, Appointment} from './styles';
+import { Link } from 'react-router-dom';
+import {
+  Container,
+  Header,
+  HeaderContent,
+  Profile,
+  Content,
+  Schedule,
+  Calendar,
+  NextAppointment,
+  Section,
+  Appointment,
+} from './styles';
 
 import logoImg from '../../assets/logo.svg';
 import { useAuth } from '../../hooks/auth';
+import api from '../../services/api';
 
+interface MonthAvailabilityItem {
+  day: number;
+  available: boolean;
+}
 
-const Dashboard: React.FC = () =>{
-    const [selectedDate, setSelectedDate] = useState(new Date());
+interface Appointment {
+  id: string;
+  date: string;
+  hourFormatted: string;
+  user: {
+    name: string;
+    avatar_url: string;
+  };
+}
 
-    const handleDateChange = useCallback((day: Date, modifiers: DayModifiers) => {
-        if(modifiers.available){
-            setSelectedDate(day);
-        }
-    }, []);
+const Dashboard: React.FC = () => {
+  const { signOut, user } = useAuth();
 
-    const { signOut, user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [monthAvailability, setMonthAvailability] = useState<
+    MonthAvailabilityItem[]
+  >([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-    return(
-      <Container>
-        <Header>
-          <HeaderContent>
-            <img src={logoImg} alt="GoBarber" />
+  const handleDateChange = useCallback((day: Date, modifiers: DayModifiers) => {
+    if (modifiers.available && !modifiers.disabled) {
+      setSelectedDate(day);
+    }
+  }, []);
 
-            <Profile>
-              <img src={user.avatar_url} alt={user.name} />
-              <div>
-                <span>Bem-vindo,</span>
+  const handleMonthChange = useCallback((month: Date) => {
+    setCurrentMonth(month);
+  }, []);
+
+  useEffect(() => {
+    api
+      .get(`/providers/${user.id}/month-availability`, {
+        params: {
+          year: currentMonth.getFullYear(),
+          month: currentMonth.getMonth() + 1,
+        },
+      })
+      .then(response => {
+        setMonthAvailability(response.data);
+      });
+  }, [currentMonth, user.id]);
+
+  useEffect(() => {
+    api
+      .get<Appointment[]>('/appointments/me', {
+        params: {
+          year: selectedDate.getFullYear(),
+          month: selectedDate.getMonth() + 1,
+          day: selectedDate.getDate(),
+        },
+      })
+      .then(response => {
+        const appointmentsFormatted = response.data.map(appointment => {
+          return {
+            ...appointment,
+            hourFormatted: format(parseISO(appointment.date), 'HH:mm'),
+          };
+        });
+
+        setAppointments(appointmentsFormatted);
+      });
+  }, [selectedDate]);
+
+  const disabledDays = useMemo(() => {
+    const dates = monthAvailability
+      .filter(monthDay => monthDay.available === false)
+      .map(monthDay => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        return new Date(year, month, monthDay.day);
+      });
+
+    return dates;
+  }, [currentMonth, monthAvailability]);
+
+  const selectedDateAsText = useMemo(() => {
+    return format(selectedDate, "'Dia' dd 'de' MMMM", {
+      locale: ptBR,
+    });
+  }, [selectedDate]);
+
+  const selectedWeekDay = useMemo(() => {
+    return format(selectedDate, 'cccc', {
+      locale: ptBR,
+    });
+  }, [selectedDate]);
+
+  const morningAppointments = useMemo(() => {
+    return appointments.filter(appointment => {
+      return parseISO(appointment.date).getHours() < 12;
+    });
+  }, [appointments]);
+
+  const afternoonAppointments = useMemo(() => {
+    return appointments.filter(appointment => {
+      return parseISO(appointment.date).getHours() >= 12;
+    });
+  }, [appointments]);
+
+  const nextAppointment = useMemo(() => {
+    return appointments.find(appointment => {
+      return isAfter(parseISO(appointment.date), new Date());
+    });
+  }, [appointments]);
+
+  return (
+    <Container>
+      <Header>
+        <HeaderContent>
+          <img src={logoImg} alt="GoBarber" />
+
+          <Profile>
+            <img src={user.avatar_url} alt={user.name} />
+            <div>
+              <span>Bem-vindo,</span>
+              <Link to="/profile">
                 <strong>{user.name}</strong>
-              </div>
-            </Profile>
+              </Link>
+            </div>
+          </Profile>
 
-            <button type="button" onClick={signOut}>
-              <FiPower />
-            </button>
-          </HeaderContent>
-        </Header>
+          <button type="button" onClick={signOut}>
+            <FiPower />
+          </button>
+        </HeaderContent>
+      </Header>
 
-        <Content>
-          <Schedule>
-            <h1>Horários Agendados</h1>
-            <p>
-              <span>Hoje</span>
-              <span>Dia 06</span>
-              <span>Segunda-feira</span>
-            </p>
+      <Content>
+        <Schedule>
+          <h1>Horários Agendados</h1>
+          <p>
+            {isToday(selectedDate) && <span>Hoje</span>}
+            <span>{selectedDateAsText}</span>
+            <span>{selectedWeekDay}</span>
+          </p>
 
+          {isToday(selectedDate) && nextAppointment && (
             <NextAppointment>
               <strong>Atendimento a seguir</strong>
 
               <div>
-                <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
+                <img
+                  src={nextAppointment.user.avatar_url}
+                  alt={nextAppointment.user.name}
+                />
 
-                <strong>Gabriel Cezar</strong>
+                <strong>{nextAppointment.user.name}</strong>
                 <span>
                   <FiClock />
-                  08:00
+                  {nextAppointment.hourFormatted}
                 </span>
               </div>
             </NextAppointment>
+          )}
+          <Section>
+            <strong>Manhã</strong>
 
-            <Section>
-              <strong>Manhã</strong>
+            {morningAppointments.length === 0 && (
+              <p>Nenhum agendamento por aqui...</p>
+            )}
 
-              <Appointment>
+            {morningAppointments.map(appointment => (
+              <Appointment key={appointment.id}>
                 <span>
                   <FiClock />
-                  08:00
+                  {appointment.hourFormatted}
                 </span>
 
                 <div>
-                  <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
-                  <strong>Gabriel Cezar</strong>
+                  <img
+                    src={appointment.user.avatar_url}
+                    alt={appointment.user.name}
+                  />
+                  <strong>{appointment.user.name}</strong>
                 </div>
               </Appointment>
+            ))}
+          </Section>
+          <Section>
+            <strong>Tarde</strong>
 
-              <Appointment>
+            {afternoonAppointments.length === 0 && (
+              <p>Nenhum agendamento por aqui...</p>
+            )}
+
+            {afternoonAppointments.map(appointment => (
+              <Appointment key={appointment.id}>
                 <span>
                   <FiClock />
-                  08:00
+                  {appointment.hourFormatted}
                 </span>
 
                 <div>
-                  <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
-                  <strong>Gabriel Cezar</strong>
+                  <img
+                    src={appointment.user.avatar_url}
+                    alt={appointment.user.name}
+                  />
+                  <strong>{appointment.user.name}</strong>
                 </div>
               </Appointment>
-
-              <Appointment>
-                <span>
-                  <FiClock />
-                  08:00
-                </span>
-
-                <div>
-                  <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
-                  <strong>Gabriel Cezar</strong>
-                </div>
-              </Appointment>
-            </Section>
-            <Section>
-              <strong>Manhã</strong>
-
-              <Appointment>
-                <span>
-                  <FiClock />
-                  08:00
-                </span>
-
-                <div>
-                  <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
-                  <strong>Gabriel Cezar</strong>
-                </div>
-              </Appointment>
-
-              <Appointment>
-                <span>
-                  <FiClock />
-                  08:00
-                </span>
-
-                <div>
-                  <img src="https://avatars0.githubusercontent.com/u/54969988?s=460&u=b4ed3d1fbc828336b676c90263140c4f6b4dbf39&v=4" alt="Gabriel Cezar" />
-                  <strong>Gabriel Cezar</strong>
-                </div>
-              </Appointment>
-            </Section>
-          </Schedule>
-          <Calendar>
-            <DayPicker
-              weekdaysShort={['D', 'S', 'T', 'Q', 'Q', 'S', 'S']}
-              fromMonth={new Date()}
-              disabledDays={[
-                  {daysOfWeek: [0, 6]}
-              ]}
-              modifiers={{
-                  available: { daysOfWeek: [1, 2, 3, 4, 5]},
-              }}
-              selectedDays={selectedDate}
-              onDayClick={handleDateChange}
-              months={[
-                    'Janeiro',
-                    'Fevereiro',
-                    'Março',
-                    'Abril',
-                    'Maio',
-                    'Junho',
-                    'Julho',
-                    'Agosto',
-                    'Setembro',
-                    'Outubro',
-                    'Novembro',
-                    'Dezembro',
-                ]}
-            />
-          </Calendar>
-        </Content>
-      </Container>
-
-        );
-
+            ))}
+          </Section>
+        </Schedule>
+        <Calendar>
+          <DayPicker
+            weekdaysShort={['D', 'S', 'T', 'Q', 'Q', 'S', 'S']}
+            fromMonth={new Date()}
+            disabledDays={[{ daysOfWeek: [0, 6] }, ...disabledDays]}
+            modifiers={{
+              available: { daysOfWeek: [1, 2, 3, 4, 5] },
+            }}
+            selectedDays={selectedDate}
+            onMonthChange={handleMonthChange}
+            onDayClick={handleDateChange}
+            months={[
+              'Janeiro',
+              'Fevereiro',
+              'Março',
+              'Abril',
+              'Maio',
+              'Junho',
+              'Julho',
+              'Agosto',
+              'Setembro',
+              'Outubro',
+              'Novembro',
+              'Dezembro',
+            ]}
+          />
+        </Calendar>
+      </Content>
+    </Container>
+  );
 };
 
 export default Dashboard;
